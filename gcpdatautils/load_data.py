@@ -4,9 +4,10 @@ from collections import defaultdict
 import numpy as np
 import h5py
 import traceback
+from gcpdatautils import ROTTEN_EGGS
 
 def parse_events_html(event_file, exclude_events_longer_than_days=7):
-    soup = BeautifulSoup(open(event_file).read())
+    soup = BeautifulSoup(open(event_file).read(), features="lxml")
     #the 'recipe' and 'statistic' columns don't always get parsed correctly due
     # to the break, but we can work around it
     rows = [[td.contents[0].rstrip() for td in row.find_all("td") ]
@@ -70,7 +71,8 @@ class GCPMissingDataError(RuntimeError):
 #Instantiate a GCP data reader to read data from the hdf5 files I (Avanti Shrikumar) prepared
 class GCPHdf5DataReader(object):
 
-  def __init__(self, bad_data_file="rotteneggs.txt", year_to_hdf5path=lambda x: "GCP1data_"+str(x)+".hdf5"):
+  def __init__(self, bad_data_file=ROTTEN_EGGS, year_to_hdf5path=lambda x: "GCP1data_"+str(x)+".hdf5"):
+    print("Parsing the rotten egg file:",bad_data_file)
     #reorganize the bad data list by device ID
     self.bad_data_lookup = defaultdict(list)
     for baddata_starttime, baddata_endtime, deviceid in parse_bad_data_file(bad_data_file):
