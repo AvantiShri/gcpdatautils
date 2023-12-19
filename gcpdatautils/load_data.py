@@ -39,7 +39,7 @@ def parse_events_html(event_file, exclude_events_longer_than_days=7):
     return included_events
 
 
-def parse_rotten_egg_file(self, file):
+def parse_rotten_egg_file(file):
     bad_data_list = []
     #read in the bad data durations
     for line in open(file, 'r'):
