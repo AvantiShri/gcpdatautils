@@ -72,10 +72,10 @@ class GCPMissingDataError(RuntimeError):
 class GCPHdf5DataReader(object):
 
   def __init__(self, bad_data_file=ROTTEN_EGGS, year_to_hdf5path=lambda x: "GCP1data_"+str(x)+".hdf5"):
-    print("Parsing the rotten egg file:",bad_data_file)
+    print("Parsing the bad data file:",bad_data_file)
     #reorganize the bad data list by device ID
     self.bad_data_lookup = defaultdict(list)
-    for baddata_starttime, baddata_endtime, deviceid in parse_bad_data_file(bad_data_file):
+    for baddata_starttime, baddata_endtime, deviceid in parse_rotten_egg_file(bad_data_file):
       self.bad_data_lookup[deviceid].append((baddata_starttime, baddata_endtime))
     self.year_to_hdf5fh = {} #mapping from the year to the hdf5 file handle
     self.year_to_hdf5path = year_to_hdf5path
