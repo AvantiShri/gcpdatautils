@@ -67,7 +67,6 @@ def parse_rotten_egg_file(file):
 class GCPMissingDataError(RuntimeError):
   pass
 
-
 #Instantiate a GCP data reader to read data from the hdf5 files I (Avanti Shrikumar) prepared
 class GCPHdf5DataReader(object):
 
@@ -182,3 +181,4 @@ class GCPHdf5DataReader(object):
     def close(self):
       for fh in self.year_to_hdf5fh.values():
         fh.close()
+
