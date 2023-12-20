@@ -67,10 +67,10 @@ def parse_rotten_egg_file(file):
 class GCPMissingDataError(RuntimeError):
   pass
 
-#Instantiate a GCP data reader to read data from the hdf5 files I (Avanti Shrikumar) prepared
 class GCPHdf5DataReader(object):
 
-  def __init__(self, bad_data_file=ROTTEN_EGGS, year_to_hdf5path=lambda x: "GCP1data_"+str(x)+".hdf5"):
+  def __init__(self, bad_data_file=ROTTEN_EGGS,
+                     year_to_hdf5path=lambda x: "GCP1data_"+str(x)+".hdf5"):
     print("Parsing the bad data file:",bad_data_file)
     #reorganize the bad data list by device ID
     self.bad_data_lookup = defaultdict(list)
@@ -79,10 +79,10 @@ class GCPHdf5DataReader(object):
     self.year_to_hdf5fh = {} #mapping from the year to the hdf5 file handle
     self.year_to_hdf5path = year_to_hdf5path
 
-  def fetch_data(self, starttime, endtime):
+  def fetch_data(self, starttime, endtime, normalize=False):
 
     if (endtime.strftime("%Y-%m-%d") == starttime.strftime("%Y-%m-%d")):
-      return self.fetch_data_within_day(starttime, endtime) #returns both data and devices
+      return self.fetch_data_within_day_normalize(starttime, endtime, normalize=normalize) #returns both data and devices
     else:
       #split into accesses over multiple days
       start_day = starttime.strftime("%Y-%m-%d")
@@ -105,7 +105,7 @@ class GCPHdf5DataReader(object):
       day_accesses.append(
           (datetime.strptime(inter_day+" 00:00:00", '%Y-%m-%d %H:%M:%S'),
            endtime))
-      days_data_and_devices = [self.fetch_data_within_day(t1, t2) for (t1,t2) in day_accesses]
+      days_data_and_devices = [self.fetch_data_within_day_normalize(t1, t2, normalize=normalize) for (t1,t2) in day_accesses]
       #if all the days have the same sets of devices...
       if (len(set([str(x[1]) for x in days_data_and_devices]))==1):
         return np.concatenate([x[0] for x in days_data_and_devices], axis=0), days_data_and_devices[0][1]
@@ -123,6 +123,24 @@ class GCPHdf5DataReader(object):
             rearranged_day_data[:,all_devices_newidxs[deviceid]] = day_data[:,orig_deviceidx]
           rearranged_days_data.append(rearranged_day_data)
         return np.concatenate(rearranged_days_data, axis=0), all_devices
+
+  def fetch_data_within_day_normalize(self, starttime, endtime, normalize):
+    day = starttime.strftime("%Y-%m-%d")
+    day_start = datetime.strptime(day+" 00:00:00", '%Y-%m-%d %H:%M:%S')
+    day_end = datetime.strptime(day+" 23:59:59", '%Y-%m-%d %H:%M:%S')  
+    full_day_data, daydevices = self.fetch_data_within_day(day_start, day_end)
+    if (normalize==False):
+      return full_day_data, daydevices
+    else:
+      #set ddof=1 to get unbiased (more conservative) stdev estimates
+      device_day_stdevs = np.nan_to_num(np.nanstd(full_day_data, axis=0, ddof=1), np.sqrt(50))
+      device_day_means = np.nan_to_num(np.nanmean(full_day_data, axis=0), 100)
+      #transform the data to be centered around 100, with stdev of sqrt(50)
+      full_day_data_normalized = ((full_day_data - device_day_means[None,:])/
+                                  (device_day_stdevs[None,:]/np.sqrt(50))) + 100
+      start_offset =  int(starttime.timestamp() - day_start.timestamp())
+      end_offset = int((endtime.timestamp() - day_start.timestamp()) + 1)
+      return full_day_data_normalized[start_offset:end_offset], daydevices
 
   def fetch_data_within_day(self, starttime, endtime):
     assert endtime.strftime("%Y-%m-%d") == starttime.strftime("%Y-%m-%d")
@@ -175,10 +193,9 @@ class GCPHdf5DataReader(object):
 
     return day_data, devices_on_day
 
-    def __exit__(self, exc_type, exc_value, traceback):
-      self.close()
+  def __exit__(self, exc_type, exc_value, traceback):
+    self.close()
 
-    def close(self):
-      for fh in self.year_to_hdf5fh.values():
-        fh.close()
-
+  def close(self):
+    for fh in self.year_to_hdf5fh.values():
+      fh.close()
