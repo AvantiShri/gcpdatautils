@@ -125,13 +125,13 @@ class GCPHdf5DataReader(object):
         return np.concatenate(rearranged_days_data, axis=0), all_devices
 
   def fetch_data_within_day_normalize(self, starttime, endtime, normalize):
-    day = starttime.strftime("%Y-%m-%d")
-    day_start = datetime.strptime(day+" 00:00:00", '%Y-%m-%d %H:%M:%S')
-    day_end = datetime.strptime(day+" 23:59:59", '%Y-%m-%d %H:%M:%S')  
-    full_day_data, daydevices = self.fetch_data_within_day(day_start, day_end)
     if (normalize==False):
-      return full_day_data, daydevices
+      return self.fetch_data_within_day(starttime, endtime)
     else:
+      day = starttime.strftime("%Y-%m-%d")
+      day_start = datetime.strptime(day+" 00:00:00", '%Y-%m-%d %H:%M:%S')
+      day_end = datetime.strptime(day+" 23:59:59", '%Y-%m-%d %H:%M:%S')  
+      full_day_data, daydevices = self.fetch_data_within_day(day_start, day_end)
       #set ddof=1 to get unbiased (more conservative) stdev estimates
       device_day_stdevs = np.nan_to_num(np.nanstd(full_day_data, axis=0, ddof=1), np.sqrt(50))
       device_day_means = np.nan_to_num(np.nanmean(full_day_data, axis=0), 100)
