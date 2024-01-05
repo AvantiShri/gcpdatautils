@@ -174,6 +174,7 @@ class GCPHdf5DataReader(object):
     #replace 255 with nan; 255 was used to encode NaNs in the hdf5 file
     day_data[day_data==255] = np.nan
     
+    devices_on_day = fh[day].attrs["device_ids"]
     if (mask_bad_data):
       #Radin 2023 (Anomalous entropic effects in physical systems associated
       # with collective consciousness) said "All individual samples within a matrix
@@ -183,7 +184,6 @@ class GCPHdf5DataReader(object):
 
       #Mask out columns with bad data
       masking_occurred = False
-      devices_on_day = fh[day].attrs["device_ids"]
       for deviceid_idx,deviceid in enumerate(devices_on_day):
         if (deviceid in self.bad_data_lookup):
           for rottenegg_start, rottenegg_end in self.bad_data_lookup[deviceid]:
