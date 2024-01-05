@@ -130,7 +130,7 @@ class GCPHdf5DataReader(object):
     else:
       day = starttime.strftime("%Y-%m-%d")
       day_start = datetime.strptime(day+" 00:00:00", '%Y-%m-%d %H:%M:%S')
-      day_end = datetime.strptime(day+" 23:59:59", '%Y-%m-%d %H:%M:%S')  
+      day_end = datetime.strptime(day+" 23:59:59", '%Y-%m-%d %H:%M:%S')
       full_day_data, daydevices = self.fetch_data_within_day(day_start, day_end)
       #set ddof=1 to get unbiased (more conservative) stdev estimates
       device_day_stdevs = np.nan_to_num(np.nanstd(full_day_data, axis=0, ddof=1), np.sqrt(50))
@@ -142,12 +142,19 @@ class GCPHdf5DataReader(object):
       end_offset = int((endtime.timestamp() - day_start.timestamp()) + 1)
       return full_day_data_normalized[start_offset:end_offset], daydevices
 
+  def get_fh_for_year(self, year):
+    if (year not in self.year_to_hdf5fh):
+      self.year_to_hdf5fh[year] = h5py.File(self.year_to_hdf5path(year), "r")
+    return self.year_to_hdf5fh[year]
+
+  def get_available_days_in_year(self, year):
+    fh = self.get_fh_for_year(year)
+    return fh.keys()
+
   def fetch_data_within_day(self, starttime, endtime):
     assert endtime.strftime("%Y-%m-%d") == starttime.strftime("%Y-%m-%d")
     year = starttime.year
-    if (year not in self.year_to_hdf5fh):
-      self.year_to_hdf5fh[year] = h5py.File(self.year_to_hdf5path(year), "r")
-    fh = self.year_to_hdf5fh[year]
+    fh = self.get_fh_for_year(year)
     day = starttime.strftime("%Y-%m-%d")
     if (day not in fh):
       raise GCPMissingDataError("data for "+day+" not present")
@@ -164,8 +171,13 @@ class GCPHdf5DataReader(object):
     start_offset = int(starttime.timestamp() - dset.attrs['start_time'])
     end_offset = int(endtime.timestamp()+1 - dset.attrs['start_time']) #add +1 since GCP ranges are end-inclusive
     day_data = np.array(dset[start_offset:end_offset]).astype("float")
-    #replace 255 with nan
+    #replace 255 with nan; 255 was used to encode NaNs in the hdf5 file
     day_data[day_data==255] = np.nan
+    #Radin 2023 (Anomalous entropic effects in physical systems associated
+    # with collective consciousness) said "All individual samples within a matrix
+    # less than 55 or greater than 145 were set to nan" so we do that here
+    day_data = np.where((day_data < 55), np.nan, day_data)
+    day_data = np.where((day_data > 145), np.nan, day_data)
 
     #Mask out columns with bad data
     masking_occurred = False
