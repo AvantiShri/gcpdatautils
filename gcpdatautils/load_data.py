@@ -151,7 +151,7 @@ class GCPHdf5DataReader(object):
     fh = self.get_fh_for_year(year)
     return fh.keys()
 
-  def fetch_data_within_day(self, starttime, endtime, bail_if_missing_seconds=True):
+  def fetch_data_within_day(self, starttime, endtime, bail_if_missing_seconds=True, mask_bad_data=True):
     assert endtime.strftime("%Y-%m-%d") == starttime.strftime("%Y-%m-%d")
     year = starttime.year
     fh = self.get_fh_for_year(year)
@@ -173,31 +173,34 @@ class GCPHdf5DataReader(object):
     day_data = np.array(dset[start_offset:end_offset]).astype("float")
     #replace 255 with nan; 255 was used to encode NaNs in the hdf5 file
     day_data[day_data==255] = np.nan
-    #Radin 2023 (Anomalous entropic effects in physical systems associated
-    # with collective consciousness) said "All individual samples within a matrix
-    # less than 55 or greater than 145 were set to nan" so we do that here
-    day_data = np.where((day_data < 55), np.nan, day_data)
-    day_data = np.where((day_data > 145), np.nan, day_data)
+    
+    if (mask_bad_data):
+      #Radin 2023 (Anomalous entropic effects in physical systems associated
+      # with collective consciousness) said "All individual samples within a matrix
+      # less than 55 or greater than 145 were set to nan" so we do that here
+      day_data = np.where((day_data < 55), np.nan, day_data)
+      day_data = np.where((day_data > 145), np.nan, day_data)
 
-    #Mask out columns with bad data
-    masking_occurred = False
-    devices_on_day = fh[day].attrs["device_ids"]
-    for deviceid_idx,deviceid in enumerate(devices_on_day):
-      if (deviceid in self.bad_data_lookup):
-        for rottenegg_start, rottenegg_end in self.bad_data_lookup[deviceid]:
-          if (rottenegg_start.timestamp() <= endtime.timestamp() and rottenegg_end.timestamp() >= starttime.timestamp()):
-            if (masking_occurred == False):
-              print("Before masking, fraction of nans in raw data is", np.mean(np.isnan(day_data)),"for",starttime,"to",endtime)
-            masking_occurred = True
-            print("Found 'rotten egg' entries for device id:",deviceid,
-                  "in time range",starttime,"to",endtime,
-                  "(range:",rottenegg_start,"to",rottenegg_end,")")
-            mask_startidx = int(max(rottenegg_start.timestamp()-starttime.timestamp(),0))
-            mask_endidx = int(min((rottenegg_end.timestamp()+1)-starttime.timestamp(), len(day_data))) #+1 because end inclusive
-            day_data[mask_startidx:mask_endidx, deviceid_idx] = np.nan
+      #Mask out columns with bad data
+      masking_occurred = False
+      devices_on_day = fh[day].attrs["device_ids"]
+      for deviceid_idx,deviceid in enumerate(devices_on_day):
+        if (deviceid in self.bad_data_lookup):
+          for rottenegg_start, rottenegg_end in self.bad_data_lookup[deviceid]:
+            if (rottenegg_start.timestamp() <= endtime.timestamp() and rottenegg_end.timestamp() >= starttime.timestamp()):
+              if (masking_occurred == False):
+                print("Before masking, fraction of nans in raw data is", np.mean(np.isnan(day_data)),"for",starttime,"to",endtime)
+              masking_occurred = True
+              print("Found 'rotten egg' entries for device id:",deviceid,
+                    "in time range",starttime,"to",endtime,
+                    "(range:",rottenegg_start,"to",rottenegg_end,")")
+              mask_startidx = int(max(rottenegg_start.timestamp()-starttime.timestamp(),0))
+              mask_endidx = int(min((rottenegg_end.timestamp()+1)-starttime.timestamp(), len(day_data))) #+1 because end inclusive
+              day_data[mask_startidx:mask_endidx, deviceid_idx] = np.nan
 
-    if (masking_occurred):
-      print("After masking, fraction of nans in raw data is", np.mean(np.isnan(day_data)))
+      if (masking_occurred):
+        print("After masking, fraction of nans in raw data is", np.mean(np.isnan(day_data)))
+    
     #Check that there are no rows that completely lack data
     nonnan_devices_per_second = np.sum(np.isnan(day_data)==False, axis=1)
     if (np.min(nonnan_devices_per_second)==0 and bail_if_missing_seconds):
