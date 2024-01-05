@@ -151,7 +151,7 @@ class GCPHdf5DataReader(object):
     fh = self.get_fh_for_year(year)
     return fh.keys()
 
-  def fetch_data_within_day(self, starttime, endtime):
+  def fetch_data_within_day(self, starttime, endtime, bail_if_missing_seconds=True):
     assert endtime.strftime("%Y-%m-%d") == starttime.strftime("%Y-%m-%d")
     year = starttime.year
     fh = self.get_fh_for_year(year)
@@ -200,7 +200,7 @@ class GCPHdf5DataReader(object):
       print("After masking, fraction of nans in raw data is", np.mean(np.isnan(day_data)))
     #Check that there are no rows that completely lack data
     nonnan_devices_per_second = np.sum(np.isnan(day_data)==False, axis=1)
-    if (np.min(nonnan_devices_per_second)==0):
+    if (np.min(nonnan_devices_per_second)==0 and bail_if_missing_seconds):
       raise GCPMissingDataError("Some seconds for query from "+str(starttime)+" to "+str(endtime)+" had no data")
 
     return day_data, devices_on_day
