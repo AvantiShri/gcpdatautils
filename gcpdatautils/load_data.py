@@ -33,7 +33,8 @@ def parse_events_html(event_file, exclude_events_longer_than_days=7):
                 print("Skipping because redundant with a corresponding 'mean' event: ",
                       event_num, event_name, start, end)
                 continue
-
+        else:
+            continue
         included_events.append((event_num, event_name, start_datetime, end_datetime, duration))
 
     return included_events
