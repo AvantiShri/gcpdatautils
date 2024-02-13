@@ -22,7 +22,7 @@ def parse_events_html(event_file, exclude_events_longer_than_days=7):
             start_datetime = datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
             end_datetime = datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
             duration = 1 + (end_datetime - start_datetime).total_seconds()
-            if (end_datetime < start_datetime):
+            if (end_datetime <= start_datetime):
                 print("Skipping because end < start:", event_num, event_name, start, end)
                 continue
             if (duration > exclude_events_longer_than_days*24*60*60):
