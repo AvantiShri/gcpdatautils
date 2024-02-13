@@ -29,7 +29,7 @@ def parse_events_html(event_file, exclude_events_longer_than_days=7):
                 print("Skipping because event is more than",exclude_events_longer_than_days,
                       "days long!", event_num, event_name, start, end)
                 continue
-            if ("New Year Var" in event_name):
+            if ("New Year Var" in event_name or "New Year Dev-Net Var" in event_name):
                 print("Skipping because redundant with a corresponding 'mean' event: ",
                       event_num, event_name, start, end)
                 continue
