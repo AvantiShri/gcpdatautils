@@ -4,7 +4,7 @@ config = {
     'include_package_data': True,
     'description': 'Utilities for parsing GCP (Global Consciousness Project) Data',
     'download_url': 'https://github.com/AvantiShri/gcpdatautils/',
-    'version': '0.1.1.2',
+    'version': '0.1.1.3',
     'packages': ['gcpdatautils', 'gcpdatautils.resources'],
     'package_data': {'gcpdatautils.resources': ['rotteneggs.txt']},
     'setup_requires': [],
